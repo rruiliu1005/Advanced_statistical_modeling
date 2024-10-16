@@ -1,0 +1,1505 @@
+---
+title:  ""
+author: "Rui Liu, Yuning Chen" 
+date: "2024-10-10"
+format: 
+  revealjs: 
+    
+    theme: simple  # Themes include 'simple', 'black', 'white', 'league', etc
+    slide-number: true
+    transition: convex  # Options include 'fade', 'slide', 'convex', etc.
+execute:
+  echo: false  # Hides code globally
+  freeze: auto # Automatically caches results
+---
+
+# [An Application of Non-parametric Modelling Techniques to Financial Data ]{style="font-size: 48px;color: white;"}  {background-color="#97C1A9"}
+
+<br> <br> [  <br> Yuning Chen <br> Rui Liu ]{style="font-size: 24px;color: white;"}
+
+# [Agenda]{style="font-size: 70px;color: white;"} {background-color="#8FCACA"}
+
+<br>
+
+::: {style="display: flex; justify-content: center; align-items: center; height: 100%; text-align: left; font-size: 24px; color: white; background: none;"}
+-        Topic 1: [Motivation]{style="padding-left: 60px;"} <br>
+
+-        Topic 2: [Kernel Density Estimation]{style="padding-left: 60px;"} <br>
+
+-        Topic 3: [Kernel Regression]{style="padding-left: 60px;"} <br>
+
+-        Topic 4: [Regression Splines]{style="padding-left: 60px;"} <br>
+:::
+
+# [ Topic 1: Motivation ]{style="color: white;"} {background-color="#FFC8A2"}
+
+## <span style=" font-size: 60px; color: white;">Data</span>{background-color="#FFC8A2"}
+
+<span style=" font-size: 15px; color: black; line-height: 1.5; display: block;">
+All data were downloaded from Yahoo Finance using the R package **quantmod**. <br>
+The dataset includes daily data on the opening, highest, lowest, and closing prices, along with trading volume. <br>
+We use the **closing price** for our analysis. <br>
+In our regression analysis, we use the **VIX index** as the response variable. 
+</span>
+<div style="font-size: 10px; color: #AA3A39;">
+| **Variable** |     **Description**      |  **Min**       |   **Max**   |**Mean**| **Variance** |
+|--------------|--------------------------|----------------|-------------|--------|--------------|
+|     Date     |          -               |   2015-01-05   |  2024-10-11 |   -    |      -       |
+|   VIX        |  Market's expectation of future volatility based on S&P500 index options, higher value means higher anticipated volatility over the next 30 days | 9.22 | 82.69 | 18.23 | 53.85|
+| Oil          | West Texas Intermediate (WTI) Crude Oil future, quoted in U.S. dollar per barrel | -37.63 | 123.7 | 61.79 | 332|
+|   Gold       |  Gold Futures on the COMEX, quoted in U.S. dollar per ounce | 1,051 | 2,670 | 1,578 | 131,279| 
+|  S&P 500     | Tracks the performance of the 500 of the largest publicly traded companies is the U.S., weighted by market capitalization | 1,859 | 5,815 | 1,578 | 1,042,455 |
+| Nikkei | Tracks the performance of the 225 large, publicly teraded companies listed on the Tokyo Stock Exchange, weighted by stock price | 14,952 | 42,224 | 24,494 | 35,633,296 | 
+|  SSE | Shanghai Stock Exchange Composite Index, tracks all A-shares and B-shares listed on the Shanghai Stock Exchange, weighted by market capitalization | 2,483 | 5,166 |3,914 | 119,747 | 
+|FTSE| FTSE 100 index, which represents the 100 largest companies listed on the London Stock Exchange, weighted by market capitalization | 4,994 | 8,446 | 7,117 | 355,342
+</div>
+
+![](scaled_data_time_series.jpeg){ width=100% style="display: block; margin: auto;" }
+
+
+## <span style=" font-size: 60px; color: white;">Histograms</span>{background-color="#FFC8A2"}
+
+![](histogram.jpeg){ width=100% style="display: block; margin: auto;"}
+
+## <span style=" font-size: 60px; color: white;">Pairwise Scatter Plots</span>{background-color="#FFC8A2"}
+
+![](scatter_plot.jpeg){ width=100% style="display: block; margin: auto;"}
+
+
+# [ Topic 2: Kernel Density Estimation ]{style="color: #8FCACA;"} {background-color="#C6DBDA"}
+## <span style=" font-size: 60px; color: white;">One-dimensional Kernel Density Estimation - Kernel Choices</span>{background-color="#C6DBDA"}
+<span style=" font-size: 15px; color: black;">
+Let $X_1,...,X_n$ be a random sample from a population with continuous pdf f. The kernel density estimator of f is: </span>
+<span style=" font-size: 15px; color: white;">
+$$\widehat{f}_h(x) = \frac{1}{nh}\sum_{i=1}^nK\left(\frac{x-X_i}{h}\right)$$
+</span>
+<span style="font-size: 15px; color: black;">
+where $K(\cdot)$ is the kernel function and h is the bandwidth. 
+</span>
+
+<span style="font-size: 30px; color: black; margin-bottom: 0; display: block;">
+Kernel Choices
+</span>
+
+::: {.columns}
+::: {.column width="33%"}
+<div style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
+  <span style="font-size: 15px; color: black; margin: 0; padding: 0;margin-top: 0;display: block;">
+    Gaussian Kernel
+  </span>
+  <img src="gaussian_kernel.jpeg" style="width: 70%; height: auto; margin: 0; padding: 0;"/>
+</div>
+:::
+::: {.column width="33%"}
+<div style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
+  <span style="font-size: 15px; color: black; margin: 0; padding: 0;margin-top: 0;display: block;">
+    Epanechnikov Kernel
+  </span>
+  <img src="epanechnikov_kernel.jpeg" style="width: 70%; height: auto; margin: 0; padding: 0;"/>
+</div>
+:::
+::: {.column width="33%"}
+<div style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
+  <span style="font-size: 15px; color: black; margin: 0; padding: 0;margin-top: 0;display: block;">
+    Uniform Kernel
+  </span>
+  <img src="uniform_kernel.jpeg" style="width: 70%; height: auto; margin: 0; padding: 0;"/>
+</div>
+:::
+:::
+
+## <span style=" font-size: 60px; color: white;">One-dimensional Kernel Density Estimation - Kernel Choices (Cont'd)</span>{background-color="#C6DBDA"}
+
+::: {.columns}
+::: {.column width="25%"}
+<span style=" font-size: 18px; color: black">**VIX Index**</span>
+![](VIX.jpg){ width=100% style="display: block; margin: auto;"}
+:::
+::: {.column width="25%"}
+<span style=" font-size: 18px; color: black">**Oil**</span>
+![](Oil.jpg){ width=100% style="display: block; margin: auto;"}
+
+
+:::
+::: {.column width="25%"}
+<span style=" font-size: 18px; color: black">**Gold**</span>
+![](Gold.jpg){ width=100% style="display: block; margin: auto;"}
+
+:::
+::: {.column width="25%"}
+<span style=" font-size: 18px; color: black">**S&P500**</span>
+![](SP_500.jpg){ width=100% style="display: block; margin: auto;"}
+:::
+:::
+
+::: {.columns}
+::: {.column width="25%"}
+<span style=" font-size: 18px; color: black">**Nikkei Index**</span>
+![](Nikkei.jpg){ width=100% style="display: block; margin: auto;"}
+:::
+::: {.column width="25%"}
+<span style=" font-size: 18px; color: black">**SSE Index**</span>
+![](SSE.jpg){ width=100% style="display: block; margin: auto;"}
+
+
+:::
+::: {.column width="25%"}
+<span style=" font-size: 18px; color: black">**FTSE 100 Index**</span>
+![](FTSE.jpg){ width=100% style="display: block; margin: auto;"}
+
+:::
+::: {.column width="25%"}
+
+:::
+:::
+
+## <span style=" font-size: 60px; color: white;">One-dimensional Kernel Density Estimation - Bandwidth Selection</span>{background-color="#C6DBDA"}
+::: {.columns}
+::: {.column width="50%"}
+<span style=" font-size: 20px; color: #3ACFFA;">
+Method 1: Selected optimal bandwidths based on AMISE <br>
+</span>
+
+<span style="font-size: 12px; color: black; line-height: 1.0; display: inline-block; margin: 0;">
+The optimal bandwidths for kernel density estimators can be selected based on asymptotic mean integrated square error (AMISE) where<br>
+$$AMISE\{\widehat{f}_h(x)\} = \frac{5}{4}n^{-\frac{4}{5}}\{R(f'')\}^{\frac{2}{5}}\{R(K)\}^{\frac{4}{5}}\{\mu_2(K)\}^{\frac{2}{5}}$$ 
+the optimal bandwidth that minimized the AMISE is:
+$$h_{opt} = \left[\frac{R(K)}{n\color{#AA3A39}{R(f'')}{\mu_2(K)}^2}\right]^{\frac{1}{5}}$$
+</span>
+<span style=" font-size: 15px; color: #AA3A39;">
+Problem: we need to estimate $f''$
+</span>
+
+<span style=" font-size: 15px; color: #53af8b;">
+Solution: Rule of Thumb <br>
+</span>
+<span style="font-size: 12px; color: black; line-height: 1.0; display: inline-block; margin: 0;">
+Estimate $R(f'')$ parametrically by assuming that f is close to a Gaussian density function. <br><br>
+Gaussian: $\widehat{h}_{rot} = \left(\frac{1}{4\pi}\right)^{\frac{1}{10}}\left(\frac{3}{8\sqrt{\pi}}\right)^{-\frac{1}{5}}\widehat{\sigma} n^{-\frac{1}{5}}\approx 1.06\widehat{\sigma} n^{-\frac{1}{5}}$ <br>
+Epanechnikov: $\widehat{h}_{rot} = \left(\frac{5\widehat{\sigma}^5}{n}\right)\approx 2.34\widehat{\sigma} n^{-\frac{1}{5}}$ <br>
+Uniform: $\widehat{h}_{rot} = \left(\frac{3\widehat{\sigma}^5}{n}\right) \approx 2.77\widehat{\sigma} n^{-\frac{1}{5}}$ <br>
+</span>
+:::
+::: {.column width="50%"}
+<span style=" font-size: 20px; color: #f69284;">
+Method 2: Select optimal bandwidths based on ISE<br>
+</span>
+
+<span style="font-size: 12px; color: black; line-height: 1.0; display: inline-block; margin: 0;">
+The optimal bandwidths for kernel density estimators can be selected based on the integrated squared error (ISE) where<br>
+$$ISE(\widehat{f}_h) = \int_{-\infty}^{\infty} \left\{\widehat{f}_h(x) - f(x)\right\}^2dx = \int_{-\infty}^{\infty} \left\{\widehat{f}_{h}(x)\right\}^2dx - \color{#AA3A39}{2\int_{-\infty}^{\infty} \widehat{f}_h(x)f(x)dx} + \int_{-\infty}^{\infty} \left\{f(x)\right\}^2dx$$ 
+</span>
+
+<span style="font-size: 15px; color: #AA3A39;line-height: 1.0; display: inline-block; margin: 0;">
+</span>
+<span style="font-size: 12px; color: #AA3A39;line-height: 3.0; display: inline-block; margin: 0; ">
+Problem: <br>$-2\int_{-\infty}^{\infty} \widehat{f}_h(x)f(x)dx = -2E\{g(X)\}|_{g=\widehat{f}_{h}}$ depends on $h$ and involves unknown quantity f. 
+</span>
+<br>
+<br>
+<span style=" font-size: 15px; color: #53af8b;">
+Solution: Least Squares Cross-validation <br>
+</span>
+<span style="font-size: 12px; color: black; line-height: 1.0; display: inline-block; margin: 0;">
+Find $h_{LSCV}$ that minimizes: 
+$$LSCV(h) = \int_{-\infty}^{\infty} \left\{\widehat{f}_{h}(x)\right\}^2dx - \frac{2}{n} \sum_{i=1}^n \widehat{f}_{h,-i}(X_i) \\
+=\frac{1}{n^2h}\sum_{i=1}^n\sum_{j=1}^nK_{(2)}\left(\frac{X_i - X_j}{h}\right) - \frac{2}{n(n-1)h}\sum_{i=1}^n\sum_{j\neq i}K\left(\frac{X_i - X_j}{h}\right)$$
+$h_{LSCV}$ is asymptotically optimal
+</span>
+:::
+:::
+
+## <span style=" font-size: 55px; color: white;">One-dimensional Kernel Density Estimation - Bandwidth Selection (Cont'd)</span>{background-color="#C6DBDA"}
+::: {.columns}
+::: {.column width="50%"}
+<span style="font-size: 14px; color: #53af8b; line-height: 1.0; display: inline-block; margin-top: 0;">
+Estimated $h_{opt}$ Values
+</span>
+<div style="font-size: 10px; color: black; line-height: 1.0; margin-top: .5em; text-align: center;">
+  <table style="margin: 0 auto; border-collapse: collapse;">
+    <tr>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Asset</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Gaussian $h_{opt}$</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Epanechnikov $h_{opt}$</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Uniform $h_{opt}$</th>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">1.38</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">3.05</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">3.61</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Oil</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">4.17</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">9.20</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">10.89</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Gold</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">82.91</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">183.03</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">216.66</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">SP&500</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">233.63</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">515.76</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">610.53</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Nikkei</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">1366.00</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">3015.40</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">3569.50</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">SSE</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">66.32</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">146.40</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">173.31</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">FTSE</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">123.26</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">272.10</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">322.10</td>
+    </tr>
+  </table>
+</div>
+<span style="font-size: 14px; color: #53af8b; line-height: 1.0; display: inline-block; margin: 0;">
+Estimated $h_{LSCV}$ Values
+</span>
+<div style="font-size: 10px; color: black; line-height: 1.0; margin-top: .5em; text-align: center;">
+  <table style="margin: 0 auto; border-collapse: collapse;">
+    <tr>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Asset</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Gaussian $h_{LSCV}$</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Epanechnikov $h_{LSCV}$</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Uniform $h_{LSCV}$</th>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">1.60</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">1.88</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">2.22</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Oil</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">8.33</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">4.60</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">5.44</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Gold</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">41.46</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">91.51</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">108.33</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">SP500</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">116.82</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">257.88</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">305.27</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Nikkei</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">682.98</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">1507.70</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">1784.80</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">SSE</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">158.37</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">87.40</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">103.46</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">{'FTSE'}</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">164.79</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">150.56</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">178.23</td>
+    </tr>
+  </table>
+</div>
+
+
+:::
+::: {.column width="50%"}
+<div style="font-size: 14px; color: black; line-height: 1.0; margin-top: 4em; text-align: center;">
+![](VIX_MSE.png){ width=60% style="display: block; margin: auto;"} <br>
+![](Oil_MSE.jpg){ width=60% style="display: block; margin: auto;"}
+
+</div>
+
+:::
+:::
+
+## <span style=" font-size: 60px; color: white;"> One-dimensional Kernel Density Estimation - Boundary Bias</span>{background-color="#C6DBDA"}
+
+<span style=" font-size: 15px; color: #AA3A39;">
+Problem: When we use the kernel density estimator $\widehat{f}_{h}{(x)}$ to estimate $f(x)$, the support set of the estimator can be different from that of $f(x)$. 
+</span>
+
+<span style=" font-size: 15px; color: black;">
+Specifically, the bias of our estimator $\widehat{f}_{h}{(x)}$ at $x = ph$ with $0 \leq p < 1$ is: 
+$$Bias\left\{\widehat{f}_{h}{(x)}\right\} = \{a_0(p) - 1\}f(x) - ha_1(p)f'(x)+\frac{1}{2}h^2a_2(p)f''(x)+o(h^2)$$ where $a_l(p) = \int_{-\infty}^pu^lK(u)du$
+</span>
+
+::: {.columns}
+::: {.column width="33%"}
+<span style="font-size: 20px; color: #53af8b; margin: 0; padding: 0;margin-top: 0;display: block;">
+   Solution 1: Normalization
+</span>
+<span style="font-size: 11px; color: black; margin: 0; padding: 0;margin-top: 0;display: block;">
+We normalize $\widehat{f}_{h}{(x)}$ by dividing by $a_0(p)$ so that: 
+$$\tilde{f_h}(x) = \frac{\widehat{f}_{h}(x)}{a_0(p)}$$ and 
+$$Bias\left\{\tilde{f_h}{(x)}\right\} = - h\frac{a_1(p)}{a_0(p)}f'(x)+\frac{1}{2}h^2\frac{a_2(p)}{a_0(p)}f''(x)+o(h^2) \rightarrow 0$$ 
+Note:<br>
+The bias has rate $h$ instead of $h^2$, meaning that the convergence at boundary is much slower.
+</span>
+:::
+::: {.column width="33%"}
+  <span style="font-size: 20px; color: #53af8b; margin: 0; padding: 0;margin-top: 0;display: block;">
+   Solution 2: Boundary Kernels
+  </span>
+  <span style="font-size: 11px; color: black; margin: 0; padding: 0;margin-top: 0;display: block;">
+  Suppose we have two kernel functions $L(\cdot)$ and $K(\cdot)$, we know that 
+  $$
+  E\{c_1(p)\widehat{f}_{K,h}{(x)}\} = c_1(p)a_0(p)f(x) - ha_1(p)c_1(p)f'(x)+O(h^2) \\ 
+  E\{a_1(p)\widehat{f}_{L,h}{(x)}\} = a_1(p)c_0(p)f(x) - ha_1(p)c_1(p)f'(x)+O(h^2) \\ 
+  $$
+  we define a new kernel $B(\cdot)$ at the boundary: 
+  $$B(u) = \frac{c_1(p)K(u) - a_1(p)L(u)}{c_1(p)a_0(p) - a_1(p)c_0(p)}$$
+  The new estimator $\widehat{f}_{B,h}{(x)}$ satisfies: 
+  $$E{\widehat{f}_{B,h}{(x)}} = f(x) + O(h^2)$$
+  </span>
+:::
+::: {.column width="33%"}
+  <span style="font-size: 18px; color: #53af8b; margin: 0; padding: 0;margin-top: 0;display: block;">
+   Solution 3: Log - Transformation 
+  </span>
+  <span style="font-size: 11px; color: black; margin: 0; padding: 0;margin-top: 0;display: block;">
+  We estimate a kernel density estimator $\widehat{g}(\cdot)$ based on the log transformed data and the estimator for the original variable y is 
+  $$\widehat{f}(x) = \frac{\widehat{g}(log(x))}{x}$$
+  Note: If x is near 0 at the boundary, then the result will be very unstable. 
+  
+  </span>
+  <span style="font-size: 18px; color: #53af8b; margin: 0; padding: 0;margin-top: 0;display: block;">
+   Solution 4: Reflected Method
+</span>
+<span style="font-size: 11px; color: black; margin: 0; padding: 0;margin-top: 0;display: block;">
+We use a new estimator $$\widehat{f}(x) = \frac{1}{nh}\left[ K\left( \frac{x+X_i}{h}\right) + K\left( \frac{x-X_i}{h}\right)\right]$$
+to estimate the density at the boundary. <br>
+Essentially, we are reflecting the kernel at the boundary. 
+</span>
+:::
+:::
+
+## <span style=" font-size: 60px; color: white;"> One-dimensional Kernel Density Estimation - Boundary Bias (Cont'd)</span>{background-color="#C6DBDA"}
+<span style="font-size: 20px; color: #53af8b; margin: 0; padding: 0;margin-top: 0;display: block;">
+We use Epanechnikov kernel and $h_{RoT}$ to illustrate the effect of different boundary bias correction methods
+</span>
+
+::: {.columns}
+::: {.column width="50%"}
+<div style="font-size: 14px; color: black; line-height: 1.0; margin-top: 5em; text-align: center;">
+![](boundary_bias_oil.jpg){ width=90% style="display: block; margin: auto;" }
+</div>
+
+:::
+::: {.column width="50%"}
+<div style="font-size: 14px; color: black; line-height: 1.0; margin-top: 5em; text-align: center;">
+![](boundary_bias_VIX.jpg){ width=90% style="display: block; margin: auto;" }
+</div>
+:::
+:::
+## <span style=" font-size: 60px; color: white;"> Two-dimensional Kernel Density Estimation</span>{background-color="#C6DBDA"}
+
+::: {.columns}
+::: {.column width="100%"}
+<span style="font-size: 18px; color: black; margin: 0; padding: 0;margin-top: 2em;display: block;">
+If $X \in \mathbb{R}^2$, then the two dementional kernel density estimator of $f(x)$ is: 
+</span>
+
+<span style="font-size: 18px; color: white; margin: 0; padding: 0;margin-top: 2em;display: block;">
+$$\widehat{f}_h(x) \ = \frac{1}{n}\sum_{i=1}^n \frac{1}{h_1 h_2}K\left( \frac{x-X_1}{h_1}, \frac{x-X_2}{h_12}\right)$$
+</span>
+
+
+<span style="font-size: 18px; color: black; margin: 0; padding: 0;margin-top: 2em;display: block;">
+More generally, we use a non-singular matrix $H$ as the bandwidth matrix, then
+</span>
+
+<span style="font-size: 18px; color: white; margin: 0; padding: 0;margin-top: 2em;display: block;">
+$$
+\widehat{f}_h(x) \ = \frac{1}{n}\sum_{i=1}^n \frac{1}{det(\mathbf{H})}\mathscr{K}\{\mathbf{H}^{-1}(\mathbf{x} - \mathbf{X_i})\}
+$$
+</span>
+
+:::
+:::
+
+::: {.columns}
+::: {.column width="25%"}
+<div style="font-size: 14px; color: black; line-height: 1.0; margin-top: 2em; text-align: center;">
+**Fitted Density Plot - Oil v.s Gold**
+
+![](3D_Gold_Oil.jpg){ width=100% style="display: block; margin: auto;" }
+</div>
+:::
+::: {.column width="25%"}
+<div style="font-size: 14px; color: black; line-height: 1.0; margin-top: 2em; text-align: center;">
+**Fitted Density Plot - Gold v.s VIX**
+
+![](3D_Gold_VIX.jpg){ width=100% style="display: block; margin: auto;" }
+</div>
+:::
+::: {.column width="25%"}
+<div style="font-size: 14px; color: black; line-height: 1.0; margin-top: 2em; text-align: center;">
+**Fitted Density Plot - Oil v.s Gold**
+
+![](3D_Oil_VIX.jpg){ width=100% style="display: block; margin: auto;" }
+</div>
+:::
+::: {.column width="25%"}
+<div style="font-size: 14px; color: black; line-height: 1.0; margin-top: 2em; text-align: center;">
+**Fitted Density Plot - S&P500 v.s VIX**
+
+![](3D_SP500_VIX.jpg){ width=100% style="display: block; margin: auto;" }
+</div>
+:::
+:::
+
+# [ Topic 3: Kernel Regression ]{style="color: black;"} {background-color="#F1EDE6"}
+
+## <span style=" font-size: 35px; color: black;"> Scaling Data </span>{background-color="#F1EDE6"}
+
+<span style=" font-size: 20px; color: black;">For our regression analysis, we scale the data by standardizing the data so that the distance calculation are consistent across the covariates. 
+</span>
+![](scatter_plot_scaled.jpeg){ width=70% style="display: block; margin: auto;" }
+
+
+## <span style=" font-size: 35px; color: black;"> Local Constant and Local Linear Kernel Regression </span>{background-color="#F1EDE6"}
+
+ <span style=" font-size: 20px; color: black;">
+ We model the data non-parametrically as:  </span>
+ <span style="font-size: 20px; color: grey;">
+ $$Y_i = m(\mathbf{X_i}) + \epsilon_i$$
+ </span>
+ 
+<span style=" font-size: 20px; color: black;">
+In a </span> <span style=" font-size: 20px; color: #00C4D4;">local constant estimator </span><span style=" font-size: 20px; color: black;">, the estimator $\widehat{m}_{h}(x)$ is defined as:
+</span>
+
+<span style=" font-size: 20px; color: #C06C84;">
+$$\widehat{m}_{h}(x) = \frac{\sum_{i=1}^nK\left(\frac{x-X_i}{h}\right)Y_i}{K\left(\frac{x-X_i}{h}\right)}$$
+</span>
+
+<span style=" font-size: 20px; color: black;">
+In a </span> <span style=" font-size: 20px; color: #00C4D4;">local linear estimator </span><span style=" font-size: 20px; color: black;">, the estimator $\widehat{m}_{h}(x)$ is defined as:
+</span>
+
+<span style=" font-size: 20px; color: #355C7D;">
+$$\widehat{m}_{1,h}(x) = \frac{S_{2,h}(x)T_{0,h}(x) - S_{1,h}(x)T_{1,h}(x)}{S_{0,h}(x)S_{2,h}(x)- S^2_{1,h}(x)} \qquad $$ 
+</span>
+
+<span style=" font-size: 20px; color: #355C7D;">
+where
+$$\widehat{\beta}(x)= \begin{pmatrix}
+S_{0,h}(x) & S_{1,h}(x) \\ 
+S_{1,h}(x) & S_{2,h}(x)
+\end{pmatrix}^{-1}
+\begin{pmatrix}
+T_{0,h}(x) \\ 
+T_{1,h}(x)
+\end{pmatrix}
+\qquad 
+S_{j,h}(x) = \sum_{i=1}^n K_h(x-X_i)(X_i-x)^j
+\qquad 
+T_{j,h}(x) = \sum_{i=1}^n K_h(x-X_i)(X_i-x)^jY_i
+$$ 
+</span>
+
+
+## <span style=" font-size: 35px; color: black;"> One Dimensional Kernel Regression </span>{background-color="#F1EDE6"}
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0em;"}
+::: {style="flex: 1; display: flex; justify-content: center; margin: 0; padding: 0;"}
+<span style=" font-size: 20px; color: #8FCACA;"> Local Constant Regression with Epanechnikov Kernel</span>
+![](one_dimensional_kernel_regression_lc_epanechnikov.jpeg){ width=100% style="display: block; margin: auto;" }
+:::
+::: {style="flex: 1; display: flex; justify-content: center; margin: 0; padding: 0;"}
+<span style=" font-size: 20px; color: pink;"> Local Linear Regression with Epanechnikov Kernel</span>
+![](one_dimensional_kernel_regression_ll_epanechnikov.jpeg){ width=100% style="display: block; margin: auto;" }
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 0em;"}
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin: 0; padding: 0;"}
+**Bandwidth selected by cross validation, minimizing the weighted average residual sum of squares**
+
+|  Model       |  adjusted $R^2$  |     X Range       | Bandwidth | Bandwidth % of X Range |
+|--------------|------------------|-------------------|-----------|-------------------------|
+| VIX ~ S&P500 | 0.2952|  -1.41 - 2.47     |   0.0093  |          0.24%         |
+| VIX ~ Oil    | 0.4823| -2.87 - 3.42      |   0.0848  |          1.35%         |
+| VIX ~ Gold   | 0.4330|  -1.45 - 3.01     |  0.0195   |          0.44%         |
+| VIX ~ Nikkei | 0.2022| -1.60 - 2.97      |  0.025    |          0.55%         |
+| VIX ~ SSE    | 0.0593|  -2.06 - 5.70    |  0.0932    |          1.20%         |
+| VIX ~ FTSE   | 0.4833|  -3.57 - 2.23    |  0.0716    |          1.24%         |
+:::
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin: 0; padding: 0;"}
+**Bandwidth selected by cross validation, minimizing the weighted average residual sum of squares**
+
+|  Model       |  adjusted $R^2$  |     X Range       | Bandwidth | Bandwidth % of X Range |
+|--------------|------------------|-------------------|-----------|-------------------------|
+| VIX ~ S&P500 | 0.2147|  -1.41 - 2.47     |   0.0834  |          2.15%         |
+| VIX ~ Oil    | 0.4824| -2.87 - 3.42      |   0.0237  |          1.48%         |
+| VIX ~ Gold   | 0.4269|  -1.45 - 3.01     |  0.0195   |          0.53%         |
+| VIX ~ Nikkei | 0.1849| -1.60 - 2.97      |  0.0527    |         1.15%         |
+| VIX ~ SSE    | 0.0550|  -2.06 - 5.70    |  0.0799    |          1.84%         |
+| VIX ~ FTSE   | 0.4821|  -3.57 - 2.23    |  0.0716    |          1.38%         |
+:::
+:::
+
+## <span style=" font-size: 35px; color: black;"> Multi Dimensional Kernel Regression </span>{background-color="#F1EDE6"}
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 1em; margin-bottom:1em;"}
+::: {style="flex: 1; text-align: center; font-size: 0.25em; margin: 0; padding: 0;"}
+**Local Constant Estimator - Full Model**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Oil</th>
+    <th>Gold</th>
+    <th>S&P500</th>
+    <th>Nikkei</th>
+    <th>SSE</th>
+    <th>FTSE</th>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>0.13</td>
+    <td>0.11</td>
+    <td>0.08</td>
+    <td>0.24</td>
+    <td>0.19</td>
+    <td>0.19</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.02</td>
+    <td>0.02</td>
+    <td>0.02</td>
+    <td>0.05</td>
+    <td>0.02</td>
+    <td>0.03</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.9660</b></td>
+    <td></td>
+    <td><b>Training MSE</b></td>
+    <td><b>0.0319<b></td>
+    <td><b>Testing MSE</b></td>
+    <td><b>0.4534<b></td>
+  </tr>
+</table>
+:::
+::: {style="flex: 1; text-align: center; font-size: 0.25em; margin-left: 1em; padding: 0;"}
+**Local Linear Estimator - Full Model**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Oil</th>
+    <th>Gold</th>
+    <th>S&P500</th>
+    <th>Nikkei</th>
+    <th>SSE</th>
+    <th>FTSE</th>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>0.25</td>
+    <td>0.48</td>
+    <td>0.20</td>
+    <td>0.19</td>
+    <td>0.34</td>
+    <td>0.35</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.04</td>
+    <td>0.12</td>
+    <td>0.05</td>
+    <td>0.04</td>
+    <td>0.04</td>
+    <td>0.06</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.9529</b></td>
+    <td></td>
+    <td><b>Training MSE</b></td>
+    <td><b>0.0452<b></td>
+    <td><b>Testing MSE</b></td>
+    <td><b>0.4534<b></td>
+  </tr>
+</table>
+:::
+:::
+
+::: {.columns}
+::: {.column width="100%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+Fitted v.s observed values - Local Constant Estimator
+</span>
+![](kernel_regression_lc_full_testing.jpeg){ width=90% style="display: block; margin-left: 2em;" }
+:::
+::: {.column width="100%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+Fitted v.s observed values - Local Linear Estimator
+</span>
+![](kernel_regression_ll_full_testing.jpeg){ width=90% style="display: block; margin: auto;" }
+:::
+:::
+<!-- 
+::: {.columns}
+::: {.column width="100%"}
+![](scaled_data_time_series.jpeg){ width=100% style="display: block; margin: auto;" }
+:::
+:::
+-->
+
+
+## <span style=" font-size: 35px; color: black;"> Multi Dimensional Kernel Regression (Cont'd) </span>{background-color="#F1EDE6"}
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 0em;"}
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin: 0; padding: 0;"}
+**Local Constant Estimator - Five Variables**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Training MSE</th>
+    <th>Testing MSE</th>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + SP500 + Nikkei + SSE + FTSE</td>
+    <td>0.0303</td>
+    <td>0.4049</td>
+
+  </tr>
+  <tr>
+    <td>VIX ~ Gold + SP500 + Nikkei + SSE + FTSE</td>
+    <td>0.0333</td>
+    <td>0.2595</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td>VIX ~ Oil + SP500 + Nikkei + SSE + FTSE</td>
+    <td>0.0430</td>
+    <td>0.2242</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + Nikkei + SSE + FTSE</td>
+    <td>0.0332</td>
+    <td style="background-color: lightblue;">0.2097</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + SP500 + SSE + FTSE</td>
+    <td>0.0335</td>
+    <td>0.2185</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + SP500 + Nikkei + SSE</td>
+    <td>0.0427</td>
+    <td>0.2273</td>
+  </tr>
+</table>
+:::
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin-left: 1em; padding: 0;"}
+**Local Linear Estimator - Five Variable**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Training MSE</th>
+    <th>Testing MSE</th>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + SP500 + Nikkei + SSE + FTSE</td>
+    <td>0.0592</td>
+    <td style="background-color: skyblue;">0.2330</td>
+
+  </tr>
+  <tr>
+    <td>VIX ~ Gold + SP500 + Nikkei + SSE + FTSE</td>
+    <td>0.0402</td>
+    <td>65.2433</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td>VIX ~ Oil + SP500 + Nikkei + SSE + FTSE</td>
+    <td>0.0679</td>
+    <td>59.7825</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + Nikkei + SSE + FTSE</td>
+    <td>0.0568</td>
+    <td>115.7836</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + SP500 + SSE + FTSE</td>
+    <td>0.0538</td>
+    <td>92.8924</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + SP500 + Nikkei + SSE</td>
+    <td>0.0453</td>
+    <td>6511.29</td>
+  </tr>
+</table>
+:::
+:::
+
+<span style="font-size: 12px; color: #93C990; line-height: 1; display: block; margin-top: 0em; margin-bottom:0em;">
+Local Constant Estimator 
+</span>
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 0em;"}
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+Gold
+</span>
+![](kernel_regression_lc_five_gold_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+SP500
+</span>
+![](kernel_regression_lc_five_SP500_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 0em;"}
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+Nikkei
+</span>
+![](kernel_regression_lc_five_Nikkei_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+SSE
+</span>
+![](kernel_regression_lc_five_SSE_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+FTSE
+</span>
+![](kernel_regression_lc_five_FTSE_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+
+:::
+:::
+
+<span style="font-size: 12px; color: #93C990; line-height: 1; display: block; margin-top: 0em; margin-bottom:0em;">
+Local Linear Estimator 
+</span>
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 0em;"}
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_ll_five_oil_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+Gold
+</span>
+![](kernel_regression_ll_five_gold_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+S&P500
+</span>
+![](kernel_regression_ll_five_SP500_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 0em;"}
+::: {.column width="33.3%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+Nikkei
+</span>
+![](kernel_regression_ll_five_Nikkei_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+SSE
+</span>
+![](kernel_regression_ll_five_SSE_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+:::
+::: {.column width="33.33%"}
+<span style="font-size: 12px; color: black; line-height: 1.5; display: block; margin-top: 0em;">
+FTSE
+</span>
+![](kernel_regression_ll_five_FTSE_testing.jpeg){ width=100% style="display: block; margin: 0;" }
+:::
+:::
+
+## <span style=" font-size: 35px; color: black;"> Multi Dimensional Kernel Regression (Continued) </span>{background-color="#F1EDE6"}
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 1em;"}
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin: 0; padding: 0;"}
+**Local Constant Estimator - Four Variables**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Training MSE</th>
+    <th>Testing MSE</th>
+  </tr>
+  <tr>
+    <td>VIX ~  Gold + Nikkei + SSE + FTSE</td>
+    <td>0.0484</td>
+    <td>0.2351</td>
+
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Nikkei + SSE + FTSE</td>
+    <td>0.0553</td>
+    <td style="background-color: skyblue;">0.1644</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td>VIX ~ Oil + Gold + SSE + FTSE</td>
+    <td>0.0574</td>
+    <td>0.2274</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + Nikkei + FTSE</td>
+    <td>0.0462</td>
+    <td>0.2278</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Oil + Gold + Nikkei + SSE</td>
+    <td>0.0487</td>
+    <td>0.2404</td>
+  </tr>
+</table>
+:::
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin-left: 2em; padding: 0;"}
+**Local Linear Estimator - Four Variables**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Training MSE</th>
+    <th>Testing MSE</th>
+  </tr>
+  <tr>
+    <td>VIX ~ SP500 + Nikkei + SSE + FTSE</td>
+    <td>0.0645</td>
+    <td>0.8281</td>
+
+  </tr>
+  <tr>
+    <td>VIX ~ Gold + Nikkei + SSE + FTSE</td>
+    <td>0.0580</td>
+    <td>59.6278</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td>VIX ~ Gold + SP500 + SSE + FTSE</td>
+    <td>0.0679</td>
+    <td>59.7825</td>
+  </tr>
+  <tr>
+    <td>VIX ~ Gold + SP500 + Nikkei + FTSE</td>
+    <td>0.0592</td>
+    <td style="background-color: skyblue;">0.1604</td>
+  </tr>
+  <tr>
+    <td>Gold + SP500 + Nikkei + SSE</td>
+    <td>0.3247</td>
+    <td>0.7403</td>
+  </tr>
+</table>
+:::
+:::
+
+::: {style="display: flex; justify-content: center; width: 85%; margin-top: 1em; align-items: center; aign: center; margin-left: 2.8em;"}
+::: {.column width="50%"}
+<span style="font-size: 12px; color: #93C990; line-height: 1; display: block; margin-top: 0em; margin-bottom:0em;">
+Local Constant Estimator - Excluding Gold
+</span>
+![](kernel_regression_lc_four_gold_testing.jpeg){ width=100% style="display: block; margin-right: 2em;" }
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 85%; margin-top: 0em; margin-left: 2.8em"}
+::: {.column width="20%"}
+<span style="font-size: 12px; color: #93C990; line-height: 1; display: block; margin-top: 0em; margin-bottom:0em;">
+Local Linear Estimator  - Excluding SSE
+</span>
+![](kernel_regression_lc_four_SSE_testing.jpeg){ width=100% style="display: block; margin-right: 2em;" }
+:::
+:::
+
+<!--
+## <span style=" font-size: 35px; color: black;"> Multi Dimensional Kernel Regression (Continued) </span>{background-color="#F1EDE6"}
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 1em; "}
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin: 0; padding: 0;"}
+**Local Constant Estimator - Three Variables**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Oil</th>
+    <th>Gold</th>
+    <th>S&P500</th>
+    <th>FTSE</th>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>$\times$</td>
+    <td>36.27</td>
+    <td>81.32</td>
+    <td>70.30</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>$\times$</td>
+    <td>0.02</td>
+    <td>0.02</td>
+    <td>0.02</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.8984</b></td>
+    <td></td>
+    <td><b>MSE</b></td>
+    <td><b>5.63<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>1.92</td>
+    <td>$\times$</td>
+    <td>99.45</td>
+    <td>82.87</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.01</td>
+    <td>$\times$</td>
+    <td>0.03</td>
+    <td>0.02</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td style="color: #00C4D4;"><b>0.9158</b></td>
+    <td></td>
+    <td ><b>MSE</b></td>
+    <td style="color: #00C4D4;"><b>4.6731<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>2.17</td>
+    <td>39.53</td>
+    <td>$\times$</td>
+    <td>79.53</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.01</td>
+    <td>0.02</td>
+    <td>$\times$</td>
+    <td>0.02</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.9060</b></td>
+    <td></td>
+    <td><b>MSE</b></td>
+    <td><b>5.2145<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>2.17</td>
+    <td>20.66</td>
+    <td>104.25</td>
+    <td>$\times$</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.01</td>
+    <td>0.01</td>
+    <td>0.03</td>
+    <td>$\times$</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.8896</b></td>
+    <td></td>
+    <td><b>MSE</b></td>
+    <td><b>6.1118</b></td>
+  </tr>
+</table>
+:::
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin-left: 2em; padding: 0;"}
+**Local Linear Estimator - Three Variables**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Oil</th>
+    <th>Gold</th>
+    <th>S&P500</th>
+    <th>FTSE</th>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>$\times$</td>
+    <td>149.70</td>
+    <td>2003.55</td>
+    <td>161.49</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>$\times$</td>
+    <td>0.04</td>
+    <td>0.07</td>
+    <td>0.05</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td style="color: #00C4D4;"><b>0.9075</b></td>
+    <td></td>
+    <td><b>MSE</b></td>
+    <td style="color: #00C4D4;"><b>5.0942<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>22.32</td>
+    <td>$\times$</td>
+    <td>768.60</td>
+    <td>147.36</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.14</td>
+    <td>$\times$</td>
+    <td>0.03</td>
+    <td>0.04</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.8313</b></td>
+    <td></td>
+    <td><b>MSE</b></td>
+    <td><b>9.3958<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>8.76</td>
+    <td>91.7159</td>
+    <td>$\times$</td>
+    <td>154.43</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.05</td>
+    <td>0.02</td>
+    <td>$\times$</td>
+    <td>0.04</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.8988</b></td>
+    <td></td>
+    <td><b>MSE</b></td>
+    <td><b>5.5703<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>3.29</td>
+    <td>68.40</td>
+    <td>1944.13</td>
+    <td>$\times$</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.02</td>
+    <td>0.02</td>
+    <td>0.07</td>
+    <td>$\times$</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.8487</b></td>
+    <td></td>
+    <td><b>MSE</b></td>
+    <td><b>8.7602</b></td>
+  </tr>
+</table>
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 85%; margin-top: 0em; margin-left: 2.8em"}
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 85%; margin-top: 0em; margin-left: 2.8em"}
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+:::
+
+## <span style=" font-size: 35px; color: black;"> Multi Dimensional Kernel Regression (Continued) </span>{background-color="#F1EDE6"}
+
+::: {style="display: flex; justify-content: space-between; width: 100%; margin-top: 1em;"}
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin: 0; padding: 0;"}
+**Local Constant Estimator - Two Variables**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Oil</th>
+    <th>S&P500</th>
+    <th>FTSE</th>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>$\times$</td>
+    <td>75.83</td>
+    <td>64.49</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>$\times$</td>
+    <td>0.02</td>
+    <td>0.02</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.8494</b></td>
+    <td><b>MSE</b></td>
+    <td><b>8.31<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>1.92</td>
+    <td>$\times$</td>
+    <td>79.61</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.01</td>
+    <td>$\times$</td>
+    <td>0.02</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.7398</b></td>
+    <td ><b>MSE</b></td>
+    <td><b>14.36<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>1.99</td>
+    <td>71.87</td>
+    <td>$\times$</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.01</td>
+    <td>0.02</td>
+    <td>$\times$</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td style="color: #00C4D4;"><b>0.8514</b></td>
+    <td><b>MSE</b></td>
+    <td style="color: #00C4D4;"><b>8.2618<b></td>
+  </tr>
+</table>
+:::
+::: {style="flex: 1; text-align: center; font-size: 0.2em; margin-left: 2em; padding: 0;"}
+**Local Linear Estimator - Two Variables**
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <th>Model</th>
+    <th>Gold</th>
+    <th>S&P500</th>
+    <th>FTSE</th>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>$\times$</td>
+    <td>445.50</td>
+    <td>152.72</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>$\times$</td>
+    <td>0.02</td>
+    <td>0.04</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.8433</b></td>
+    <td><b>MSE</b></td>
+    <td><b>8.6522<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>67.05</td>
+    <td>$\times$</td>
+    <td>161.50</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.02</td>
+    <td>$\times$</td>
+    <td>0.05</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td style="color: #00C4D4;"><b>0.8551</b></td>
+    <td><b>MSE</b></td>
+    <td style="color: #00C4D4;"><b>7.9767<b></td>
+  </tr>
+  <tr>
+    <td>Bandwidth</td>
+    <td>81.97</td>
+    <td>342.12</td>
+    <td>$\times$</td>
+  </tr>
+  <tr>
+    <td>Bandwidth % of X Range</td>
+    <td>0.02</td>
+    <td>0.01</td>
+    <td>$\times$</td>
+  </tr>
+  <tr style="border-top:double;">
+    <td><b>Adjusted $R^2$</b></td>
+    <td><b>0.7476</b></td>
+    <td><b>MSE</b></td>
+    <td><b>14.0521<b></td>
+  </tr>
+</table>
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 85%; margin-top: 0em; margin-left: 2.8em"}
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+:::
+
+::: {style="display: flex; justify-content: space-between; width: 85%; margin-top: 0em; margin-left: 2.8em"}
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+::: {.column width="20%"}
+<span style="font-size: 12px; color: black; line-height: 1; display: block; margin-top: 0em;">
+Oil
+</span>
+![](kernel_regression_lc_five_oil_testing.jpeg){ width=85% style="display: block; margin-right: 2em;" }
+:::
+:::
+-->
+# [ Topic 4: Regression Splines]{style="color: white;"} {background-color="#8497B5"}
+## <span style=" font-size: 35px; color: black;"> Regression Spline</span>{background-color="#8497B5"}
+
+<span style=" font-size: 15px; color: black;">The regression spline estimator of $m(x)$ is defined as: </span>
+<span style=" font-size: 15px; color: white;">$$\widehat{m}_L(x) = B^T(x)\widehat{\beta} = B^T(x)(B^TB)^{-1}B^TY$$ 
+where
+$$\mathbf{B}(x) = \begin{pmatrix} B_{-d, d+1}(x) \\ \vdots \\ B_{L, d+1}(x)\end{pmatrix} 
+\qquad 
+\mathbf{B} = \begin{pmatrix} \mathbf{B}(X_1) \\ \vdots \\ \mathbf{B}(X_n)\end{pmatrix}
+\qquad 
+\mathbf{\beta} = \begin{pmatrix} \beta_{-d} \\ \beta_{-d+1} \\ \vdots \\ \beta_L\end{pmatrix} 
+\qquad 
+\mathbf{Y} = \begin{pmatrix} Y_1 \\ Y_2 \\ \vdots \\ Y_n\end{pmatrix}
+$$
+d is the degree of the spline function, L is the number of knots used in the estimation and $\mathbf{\beta}$ are the minimizers of s
+$$\sum_{i=1}^n\left\{ Y_i - \sum_{l=-d}^L\beta_l B_{l,d+1}(X_i)\right\}^2$$
+</span>
+
+## <span style=" font-size: 35px; color: black;"> Regression Spline</span>{background-color="#8497B5"}
+<span style=" font-size: 15px; color: black; ; line-height: 2; display: block;">We use a regression spline to estimate the relationship between the **VIX index** and **Oil prices**<br>
+We sample 75% of the data without replacement as our training set and the rest 25% are used as testing set. <br>
+The optimal number of knots is selected using leave-one-out cross validation defined as: </span>
+<span style=" font-size: 15px; color: white;">
+$$CV(L) = \frac{1}{n}\sum_{i=1}^n(\{\mathbf{I}_n - diag(\Omega_n)\}_{ii}\{Y_i - \widehat{m}_L\}^2w(X_i)$$
+with $w(\cdot)$ as the indicator function checking if $X_i$ falls within the middle 90% of the data. 
+</span>
+
+::: {.columns}
+::: {.column width="50%"}
+<div style="text-align: left;">
+  <div style="font-size: 25px; color: #FFAEA5; margin-bottom: 5px;">B-Spline Basis</div>
+  <div style="font-size: 15px; color: white; margin-top: 0;">The optimal number of knots selected: **23**  <br> Training MSE: 0.4832 <br> Testing MSE: 0.6680</div>
+  <img src="bspline_regression_spline.jpeg" style="width: 75%; display: block; margin: 0;" alt="B-Spline Regression Spline">
+</div>
+:::
+
+::: {.column width="50%"}
+<div style="text-align: left;">
+  <div style="font-size: 25px; color: #8FCACA; margin-bottom: 5px;">Cubic-Spline Basis</div>
+  <div style="font-size: 15px; color: white; margin-top: 0;">The optimal number of knots selected: **33**  <br> Training MSE: 0.4803 <br> Testing MSE: 0.6686</div>
+  <img src="cubic_regression_spline.jpeg" style="width: 75%; display: block; margin: 0;" alt="B-Spline Regression Spline">
+</div>
+:::
+:::
+## <span style=" font-size: 35px; color: black;"> Penalized Regression Spline</span>{background-color="#8497B5"}
+<span style=" font-size: 15px; color: black;">The penalized regression spline estimator of $m(x)$ is defined as: </span>
+<span style=" font-size: 15px; color: white;">
+$$\widehat{m}_{\lambda}(x) = \mathbf{B}(x)(\mathbf{B}^T\mathbf{B}+\lambda \mathbf{D}_q)^{-1}\mathbf{B}^TY$$
+<span style=" font-size: 15px; color: black;">
+where 
+</span>
+<span style=" font-size: 15px; color: white;">
+$$D_q = \int_a^b\mathbf{B}^{(q)}(x)\{\mathbf{B}^{(q)}(x)\}^Tdx$$
+</span>
+<span style=" font-size: 15px; color: black;">
+The penalized spline regression estimator minimizes the following equation with respect to $s \in S_d(t)$ </span>
+<span style=" font-size: 15px; color: white;">
+$$\sum_{i=1}^n\{Y_i-s(X_i)\}^2 + \lambda \int_a^b\{s^{(q)}(x)\}^2dx$$
+</span>
+<span style=" font-size: 15px; color: black;">
+The penalized regression spline balances the trade-off between fitting the observed data closely and maintaining smoothness by penalizing excessive curvature.
+</span>
+
+![](penalized_cubic_regression_spline_with_different_lambda.jpeg){ width=80% style="display: block; margin: auto;" }
+
+## <span style=" font-size: 35px; color: black;"> Tensor Product Spline</span>{background-color="#8497B5"}
+<span style=" font-size: 15px; color: black;">The tensor product regression spline estimator of $m(x)$ is defined as: </span>
+
+<span style=" font-size: 15px; color: white;">
+$$\widehat{m}(\mathbf{x}) = \{B_{[r]}(x)\}^T\hat{c} = \{B_{[r]}(\mathbf{x})\}^T(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{Y}$$
+</span>
+<span style=" font-size: 15px; color: black;">
+where 
+</span>
+<span style=" font-size: 15px; color: white;">
+$$B_{[r]}(\mathbf{x}) = \otimes_{j=1}^rB_j(x_j) 
+\qquad 
+\mathbf{X} = 
+\begin{pmatrix}
+B_{[r]}(\mathbf{X_1}) \\
+B_{[r]}(\mathbf{X_2}) \\ 
+\vdots \\
+B_{[r]}(\mathbf{X_n})
+\end{pmatrix}$$
+</span>
+
+::: {.columns}
+::: {.column width="40%"}
+<div style="font-size: 15px; color: black; margin-top: 2em;">Example Training and Testing MSE with Tensor Product Spline</div>
+<div style="font-size: 12px; color: black; line-height: 1.0; margin-top: 3em; text-align: center;">
+  <table style="margin: 0 auto; border-collapse: collapse;">
+    <tr>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Model</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Training MSE</th>
+      <th style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">Testing MSE</th>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX ~ Oil + Gold + S&P500 + Nikkei + SSE + FTSE</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.0155</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">3.3467</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX ~ Oil + S&P500 + Nikkei + SSE + FTSE</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.0568</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.1474</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX ~ Oil + S&P500 + Nekkei + FTSE</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.1362</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.2620</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX ~ S&P500 + Nikkei + FTSE</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.2130</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.2753</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX ~ S&P500 + Nikkei</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.3257</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.7293</td>
+    </tr>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">VIX ~ S&P500 + Oil</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.4247</td>
+      <td style="padding: 8px; border-top: 1px solid black; border-bottom: 1px solid black;">0.6335</td>
+    </tr>
+  </table>
+</div>
+:::
+::: {.column width="30%"}
+<div style="text-align: left; margin-left:2em; margin-top:0.75em;">
+  <div style="font-size: 15px; color: black; margin-bottom: 0px;">Model: VIX ~ Oil + S&P500</div>
+  <div style="font-size: 15px; color: black; margin-top: 50px;">
+  <img src="tensor_spline_plot_two_model_Nikkei.png" style="width: 100%; display: block;"></div>
+</div>
+:::
+::: {.column width="30%"}
+<div style="text-align: left; margin-left:2em;margin-top:0.75em;">
+  <div style="font-size: 15px; color: black; margin-bottom: 0px;"> Model: VIX ~ Oil + S&P500</div>
+  <div style="font-size: 15px; color: black; margin-top: 50px;">
+  <img src="tensor_spline_plot_two_model_oil.png" style="width: 100%; display: block;"></div>
+</div>
+:::
+:::
+
+<!-------# [ Topic 5: Partial Linear Models]{style="color: white;"} {background-color="#FFB27B"}-->
+
+# [Q&A]{style="color: white;"} {background-color="#B6CFB6"}
